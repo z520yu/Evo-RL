@@ -258,6 +258,17 @@ def init_keyboard_listener(
     events["episode_outcome"] = None
 
     listener = None
+    if sys.stdin.isatty():
+        listener = TTYKeyboardListener(
+            events=events,
+            intervention_toggle_key=intervention_toggle_key,
+            episode_success_key=episode_success_key,
+            episode_failure_key=episode_failure_key,
+        )
+        listener.start()
+        logging.info("Using terminal keyboard controls over the current TTY.")
+        return listener, events
+
     if not is_headless():
         # Only import pynput if not in a headless environment
         from pynput import keyboard
@@ -307,19 +318,6 @@ def init_keyboard_listener(
 
         listener = keyboard.Listener(on_press=on_press)
         listener.start()
-        return listener, events
-
-    if sys.stdin.isatty():
-        listener = TTYKeyboardListener(
-            events=events,
-            intervention_toggle_key=intervention_toggle_key,
-            episode_success_key=episode_success_key,
-            episode_failure_key=episode_failure_key,
-        )
-        listener.start()
-        logging.warning(
-            "Headless environment detected. Using terminal keyboard controls over the current TTY; on-screen camera display remains unavailable."
-        )
         return listener, events
 
     logging.warning(
