@@ -166,6 +166,7 @@ wandb/
 # Data folders
 data/
 outputs/
+piper_multitask_v1/
 
 # Translations
 *.mo
