@@ -123,7 +123,38 @@ lerobot-record \
   --resume=true
 ```
 
-## 7. Continue Recording Later
+## 7. Record Task C
+
+Task text:
+
+`Fold the towel in half`
+
+This round appends to the same dataset, so `--resume=true` is required.
+
+```bash
+cd ~/Evo-RL
+
+lerobot-record \
+  --robot.type=piper_follower \
+  --robot.port=can1 \
+  --robot.id=my_piper_follower \
+  --robot.require_calibration=false \
+  --robot.cameras='{ wrist: {type: intelrealsense, serial_number_or_name: "409122274629", width: 640, height: 480, fps: 30, warmup_s: 2}}' \
+  --teleop.type=piper_leader \
+  --teleop.port=can0 \
+  --teleop.id=my_piper_leader \
+  --teleop.require_calibration=false \
+  --dataset.repo_id=local/piper_multitask_v1 \
+  --dataset.single_task="Fold the towel in half" \
+  --dataset.num_episodes=50 \
+  --dataset.episode_time_s=30 \
+  --dataset.reset_time_s=15 \
+  --dataset.push_to_hub=false \
+  --display_data=true \
+  --resume=true
+```
+
+## 8. Continue Recording Later
 
 If you want to keep adding more data to the same dataset later, use the same command as Task A or Task B, but add:
 
@@ -133,20 +164,20 @@ If you want to keep adding more data to the same dataset later, use the same com
 
 Only change `--dataset.single_task="..."` to the task you are currently collecting.
 
-## 8. Keyboard Shortcuts During Recording
+## 9. Keyboard Shortcuts During Recording
 
 - `Right Arrow`: end current episode immediately
 - `Left Arrow`: discard current episode and re-record it
 - `Esc`: stop the whole recording session
 
-## 9. Check the Final Dataset
+## 10. Check the Final Dataset
 
 ```bash
 cd ~/Evo-RL
 lerobot-dataset-report --dataset local/piper_multitask_v1
 ```
 
-## 10. Check That Both Tasks Are Inside the Same Dataset
+## 11. Check That All Tasks Are Inside the Same Dataset
 
 ```bash
 cd ~/Evo-RL
@@ -156,11 +187,12 @@ cd ~/Evo-RL
 
 Expected outcome:
 
-- two task rows
+- three task rows
 - one row for the green-block task
 - one row for the blue-block task
+- one row for the towel-fold task
 
-## 11. Notes
+## 12. Notes
 
 - Do not use `--dataset.push_to_hub=true` unless you have already logged into Hugging Face.
 - This setup uses one follower arm, one leader arm, and one wrist camera only.
