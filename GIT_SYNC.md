@@ -9,8 +9,16 @@ Remote layout:
 
 Tracked in this branch:
 
-- `README_PI05_PIPER.md`
+- `lenovo_README_PI05_PIPER.md`
+- `gemini_README_PI05_PIPER_CLIENT.md`
+- `lenovo_README_PI05_VALUE_ACP.md`
+- `gemini_PIPER_MULTITASK_DATA_COLLECTION.md`
 - `.gitignore`
+
+Machine-specific docs use a filename prefix:
+
+- `lenovo_*`: this machine
+- `gemini_*`: the other machine
 
 Local only, do not commit:
 

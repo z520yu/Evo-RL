@@ -1,4 +1,4 @@
-# Pi0.5 PiPER Training and Two-Machine Inference Notes
+# [lenovo] Pi0.5 PiPER Training and Two-Machine Inference Notes
 
 本文档记录当前机器上已经跑通的 Pi0.5 + PiPER 微调命令，以及下一步把推理拆成两台电脑运行的启动方式。
 
@@ -59,7 +59,7 @@ RUN=pi05_piper_v1_bs32_30k_0416_181219
 
 TOKENIZERS_PARALLELISM=false PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True lerobot-train \
   --dataset.repo_id=piper_multitask_v1 \
-  --dataset.root=/home/lenovo/Evo-RL/piper_multitask_v1 \
+  --dataset.root=/home/lenovo/Evo-RL/piper_multitask_v1\
   --dataset.video_backend=pyav \
   --policy.type=pi05 \
   --policy.pretrained_path=lerobot/pi05_base \

@@ -1,4 +1,4 @@
-# Pi0.5 Piper: Value + ACP + VLA Retrain
+# [lenovo] Pi0.5 Piper: Value + ACP + VLA Retrain
 
 本文档只针对当前这台机器上的 `pi05 piper` 流程，目的是把后续离线 RL 迭代固定成一套可重复执行的步骤。
 
@@ -138,21 +138,29 @@ complementary_info.acp_indicator_iter1
 ### 3.5 用 ACP 标签重训 pi05
 
 ```bash
-lerobot-train \
+TOKENIZERS_PARALLELISM=false PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True lerobot-train \
   --dataset.repo_id=$DATASET_ID \
   --dataset.root=$DATASET_ROOT \
+  --dataset.video_backend=pyav \
   --policy.type=pi05 \
   --policy.pretrained_path=$BASE_POLICY \
   --policy.device=cuda \
   --policy.dtype=bfloat16 \
+  --policy.gradient_checkpointing=true \
+  --policy.compile_model=false \
+  --policy.train_expert_only=true \
+  --policy.push_to_hub=false \
   --batch_size=32 \
+  --num_workers=8 \
   --steps=30000 \
+  --log_freq=100 \
+  --save_freq=5000 \
   --acp.enable=true \
   --acp.indicator_field=complementary_info.acp_indicator_$TAG \
   --acp.indicator_dropout_prob=0.3 \
   --output_dir=outputs/train/$POLICY_RUN \
   --job_name=$POLICY_RUN \
-  --wandb.enable=true
+  --wandb.enable=false
 ```
 
 完成后，新策略通常从下面路径取：
@@ -162,6 +170,14 @@ outputs/train/$POLICY_RUN/checkpoints/<STEP>/pretrained_model
 ```
 
 如果你训练跑满并使用最后一个 checkpoint，也可以直接用最后一轮对应的 `pretrained_model`。
+
+补充：
+
+- 这条命令刻意对齐你之前能稳定跑通的 `pi05 bs32` baseline，再额外叠加 `ACP` 参数
+- `policy.gradient_checkpointing=true` 和 `policy.train_expert_only=true` 是这台 `32G` 卡上能跑 `batch_size=32` 的关键
+- `ACP` 本身主要只是改 task 文本，不是这次爆显存的主因
+- `policy.push_to_hub=false` 是因为这个仓库默认会要求推 Hugging Face Hub；如果只是本地训练，不关掉就会报 `policy.repo_id` 缺失
+- 如果后面要重新开 `wandb`，建议同时加 `--wandb.disable_artifact=true`，避免训练结束后卡在 checkpoint artifact 上传
 
 ---
 
@@ -198,7 +214,137 @@ export POLICY_RUN=pi05_piper_acp_iter2
 
 ---
 
-## 5. 复现时必须保留的东西
+## 5. 本机直连 CAN 的人在环推理与采集
+
+如果后面不走两机 `async_inference`，而是直接在这台 GPU 机器上连 PiPER 的 CAN、相机、leader 做人在环推理，推荐直接用：
+
+```bash
+lerobot-human-inloop-record
+```
+
+这条链会同时完成：
+
+- 本机加载 policy checkpoint
+- 本机推理
+- leader 跟随 policy
+- `i` 键切到人工接管
+- 录制新数据并写入 `is_intervention / policy_action / episode_success`
+
+当前这台机器已验证过的单臂 PiPER 映射：
+
+- follower: `can1`
+- leader: `can0`
+- wrist camera: RealSense D405
+- camera serial: `409122274629`
+
+### 5.1 先激活环境和 CAN
+
+```bash
+
+cd /home/lenovo/piper_sdk/piper_sdk
+bash can_activate.sh can0 1000000 1-6.2:1.0
+bash can_activate.sh can1 1000000 1-6.4:1.0
+
+cd /home/lenovo/Evo-RL
+source /home/lenovo/miniconda3/etc/profile.d/conda.sh
+conda activate evo-rl
+
+cd /home/lenovo/Evo-RL
+lerobot-setup-can --mode=test --interfaces=can0,can1
+```
+
+### 5.2 可选：先做一次 teleop 联通性检查
+
+```bash
+lerobot-teleoperate \
+  --robot.type=piper_follower \
+  --robot.port=can0 \
+  --robot.id=my_piper_follower \
+  --robot.require_calibration=false \
+  --robot.cameras='{ wrist: {type: intelrealsense, serial_number_or_name: "409122274629", width: 640, height: 480, fps: 30, warmup_s: 2}}' \
+  --teleop.type=piper_leader \
+  --teleop.port=can1 \
+  --teleop.id=my_piper_leader \
+  --teleop.require_calibration=false \
+  --teleop.gravity_comp_tx_ratio=[1,1,1,1,1,1] \
+  --display_data=true
+```
+
+### 5.3 跑本机人在环推理
+
+```bash
+cd /home/lenovo/Evo-RL
+source /home/lenovo/miniconda3/etc/profile.d/conda.sh
+conda activate evo-rl
+
+export POLICY_PATH=/home/lenovo/Evo-RL/outputs/train/pi05_piper_acp_iter1/checkpoints/030000/pretrained_model
+# 如果你想先部署 baseline，而不是 ACP 重训后的模型，可以改成：
+# export POLICY_PATH=/home/lenovo/Evo-RL/outputs/train/pi05_piper_v1_bs32_30k_0416_181219/checkpoints/030000/pretrained_model
+export TASK_TEXT="Put the green block into the dark green bowl"
+export DATASET_ID=local/eval_piper_hil_round1
+export DATASET_ROOT=/home/lenovo/Evo-RL/eval_piper_hil_round1
+
+lerobot-human-inloop-record \
+  --robot.type=piper_follower \
+  --robot.port=can0 \
+  --robot.id=my_piper_follower \
+  --robot.require_calibration=false \
+  --robot.cameras='{ wrist: {type: intelrealsense, serial_number_or_name: "409122274629", width: 640, height: 480, fps: 30, warmup_s: 2}}' \
+  --teleop.type=piper_leader \
+  --teleop.port=can1 \
+  --teleop.id=my_piper_leader \
+  --teleop.require_calibration=false \
+  --teleop.gravity_comp_tx_ratio=[1,1,1,1,1,1] \
+  --dataset.repo_id=$DATASET_ID \
+  --dataset.root=$DATASET_ROOT \
+  --dataset.single_task="$TASK_TEXT" \
+  --dataset.num_episodes=20 \
+  --dataset.episode_time_s=30 \
+  --dataset.reset_time_s=10 \
+  --dataset.push_to_hub=false \
+  --display_data=true \
+  --play_sounds=false \
+  --policy.path=$POLICY_PATH \
+  --acp_inference.enable=true \
+  --acp_inference.use_cfg=false
+```
+
+如果这里部署的是 baseline 模型，而不是 ACP 重训后的模型，去掉最后两行：
+
+```bash
+  --acp_inference.enable=true \
+  --acp_inference.use_cfg=false
+```
+
+说明：
+
+- `TASK_TEXT` 继续用原始任务文本，不需要手动改任务名字
+- ACP 推理时也不要手动把 task 改成别的名字；代码会在推理侧自动追加 positive tag
+- 这台机器当前使用的 `can_activate.sh` 路径是 `/home/lenovo/piper_sdk/piper_sdk`
+- 这台机器当前识别到的 USB 硬件地址是：`can0 -> 1-6.2:1.0`，`can1 -> 1-6.4:1.0`
+- 这里默认新建一套独立的人在环数据：`local/eval_piper_hil_round1`
+- 因为带 `policy.path` 的录制会触发仓库里的命名校验，所以数据集名必须以 `eval_` 开头
+- 第一次新建 `eval_piper_hil_round1` 时不要加 `--resume=true`
+- `play_sounds=false` 用来关闭录制过程里的语音播报
+- `gravity_comp_tx_ratio=[1,1,1,1,1,1]` 是当前这套 MIT 接管里比较实用的保守上限；继续细调收益不高，可以先用这版采数
+- 如果后面继续往这套人在环数据里追加，在完整命令最后再加：
+
+```bash
+  --resume=true
+```
+
+### 5.4 运行时热键
+
+- `i`: policy 和人工接管之间切换
+- `s`: 标记成功并结束当前 episode
+- `f`: 标记失败并结束当前 episode
+- `Right Arrow`: 提前结束当前 episode
+- `Left Arrow`: 丢弃当前 episode 并重录
+- `Esc`: 结束整轮采集
+
+---
+
+## 6. 复现时必须保留的东西
 
 如果你想几周后还能完全复现某一轮，至少保留以下内容：
 
@@ -220,7 +366,7 @@ export POLICY_RUN=pi05_piper_acp_iter2
 
 ---
 
-## 6. 数据要求检查
+## 7. 数据要求检查
 
 在开始 value 训练前，至少确认：
 
@@ -235,7 +381,7 @@ export POLICY_RUN=pi05_piper_acp_iter2
 
 ---
 
-## 7. 最简执行顺序
+## 8. 最简执行顺序
 
 如果只是快速开始，按下面顺序照跑即可：
 
@@ -261,7 +407,7 @@ export POLICY_RUN=pi05_piper_acp_iter1
 
 ---
 
-## 8. 当前建议
+## 9. 当前建议
 
 第一次做这条链时，不要同时改 RTC、异步推理框架、数据格式。
 
