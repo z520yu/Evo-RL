@@ -76,7 +76,10 @@ class PiperGravityCompensationLoop:
         if not urdf.is_file():
             raise FileNotFoundError(f"gravity compensation URDF does not exist: {urdf}")
 
-        package_dirs = [str(urdf.parent.parent)]
+        # Support URDF mesh references like `package://piper_description/...` and
+        # `package://piper_x_description/...` by searching from the shared assets root.
+        # Keep the package directory itself as a fallback for non-package-relative meshes.
+        package_dirs = [str(urdf.parent.parent.parent), str(urdf.parent.parent)]
         self._robot = pin.RobotWrapper.BuildFromURDF(str(urdf), package_dirs)
         self._robot.data = self._robot.model.createData()
         self._nq = 6

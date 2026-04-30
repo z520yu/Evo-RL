@@ -1,4 +1,4 @@
-# PiPER Multi-Task Data Collection
+# [gemini] PiPER Multi-Task Data Collection
 
 This note records the exact commands for the current single-arm PiPER setup.
 

@@ -167,6 +167,13 @@ wandb/
 data/
 outputs/
 piper_multitask_v1/
+piper_multitask_v1_iter1/
+eval_piper_hil_round1/
+
+# Local research caches / cloned references
+.codex
+VLA_RL_papers/pdfs/
+VLA_RL_papers/repos/
 
 # Translations
 *.mo
