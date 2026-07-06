@@ -114,6 +114,8 @@ def record_loop(
     acp_inference: ACPInferenceConfig | None = None,
     communication_retry_timeout_s: float = 2.0,
     communication_retry_interval_s: float = 0.1,
+    send_zero_action_when_no_source: bool = False,
+    reset_gripper_pos: float | None = None,
 ):
     if acp_inference is None:
         acp_inference = ACPInferenceConfig()
@@ -197,6 +199,8 @@ def record_loop(
     if intervention_enabled:
         # Start in S0: policy drives both arms, teleop arm should accept feedback commands.
         set_teleop_manual_control(False)
+
+    no_action_warned = False
 
     def run_with_connection_retry(action_name: str, fn: Callable[[], T]) -> T:
         timeout_s = max(communication_retry_timeout_s, 0.0)
@@ -318,12 +322,22 @@ def record_loop(
             act_processed_teleop = teleop_action_processor((act, obs))
 
         if act_processed_policy is None and act_processed_teleop is None:
-            logging.info(
-                "No policy or teleoperator provided, skipping action generation."
-                "This is likely to happen when resetting the environment without a teleop device."
-                "The robot won't be at its rest position at the start of the next episode."
-            )
-            continue
+            if not no_action_warned:
+                logging.info(
+                    "No policy or teleoperator provided, skipping action generation."
+                    "This is likely to happen when resetting the environment without a teleop device."
+                    "The robot won't be at its rest position at the start of the next episode."
+                )
+                no_action_warned = True
+            if send_zero_action_when_no_source:
+                action_values = dict(zero_policy_action)
+                if reset_gripper_pos is not None and "gripper.pos" in action_values:
+                    action_values["gripper.pos"] = reset_gripper_pos
+            else:
+                dt_s = time.perf_counter() - start_loop_t
+                precise_sleep(max(1 / fps - dt_s, 0.0))
+                timestamp = time.perf_counter() - start_episode_t
+                continue
 
         if act_processed_teleop is not None:
             last_teleop_action = act_processed_teleop
@@ -360,7 +374,8 @@ def record_loop(
                     )
                     teleop_fallback_warned = True
         else:
-            action_values = act_processed_policy if act_processed_policy is not None else act_processed_teleop
+            if act_processed_policy is not None or act_processed_teleop is not None:
+                action_values = act_processed_policy if act_processed_policy is not None else act_processed_teleop
 
         # Applies a pipeline to the action, default is IdentityProcessor
         robot_action_to_send = robot_action_processor((action_values, obs))

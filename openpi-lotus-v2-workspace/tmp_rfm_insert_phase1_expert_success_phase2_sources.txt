@@ -1,0 +1,10 @@
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase1_insert_mouse_battery/insert-mouse-battery/expert-data
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase1_insert_mouse_battery/insert-mouse-battery/success-and-hil-data
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase2_rollouts_insert/HIL_generalist_final_insert-mouse-battery_Haruki_U-Tokyo
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase2_rollouts_insert/HIL_generalist_final_insert-mouse-battery_PengfangQian_SII
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase2_rollouts_insert/HIL_generalist_final_insert-mouse-battery_VLAlab-JP
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase2_rollouts_insert/HIL_generalist_final_insert-mouse-battery_ZechengZhu_ICL
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase2_rollouts_insert/HIL_specialist_final_insert-mouse-battery_Haruki_U-Tokyo
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase2_rollouts_insert/HIL_specialist_final_insert-mouse-battery_PengfangQian_SII
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase2_rollouts_insert/HIL_specialist_final_insert-mouse-battery_VLAlab-JP
+/home/lenovo/桌面/Posttraining-RFM-RSS2026_insert_datasets/phase2_rollouts_insert/HIL_specialist_final_insert-mouse-battery_zhangyu_Huazhong

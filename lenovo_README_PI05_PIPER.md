@@ -86,6 +86,52 @@ TOKENIZERS_PARALLELISM=false PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True le
 - `--policy.train_expert_only=true` 只训练动作专家，本次训练日志显示可训练参数约 `693M`，总参数约 `4B`。
 - `--policy.push_to_hub=false` 是必须的，否则不传 `policy.repo_id` 会报错。
 
+### 2.1 piper_multitask_v4 训练命令
+
+`piper_multitask_v4` 是当前机器上的单任务版本：
+
+- robot type: `piper_follower`
+- fps: `30`
+- episodes: `50`
+- frames: `43671`
+- observation state: `7` 维
+- action: `7` 维
+- camera key: `observation.images.wrist`
+- 已确认任务文本：
+  - `Open the first dark green drawer, pick up the blue block from the table, place the block inside, and close the drawer`
+
+这份命令沿用 v1 的超参，只替换数据集和输出名：
+
+- 这台机器里只需要把 `datasets` cache 放到 `/tmp`；Hub 的模型和 tokenizer 继续走默认的本地缓存。
+
+```bash
+cd /home/lenovo/Evo-RL
+conda activate evo-rl
+
+RUN=pi05_piper_v4_bs32_30k_0430_1748
+
+HF_DATASETS_CACHE=/tmp/hf/datasets HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True lerobot-train \
+  --dataset.repo_id=piper_multitask_v4 \
+  --dataset.root=/home/lenovo/Evo-RL/piper_multitask_v4 \
+  --dataset.video_backend=pyav \
+  --policy.type=pi05 \
+  --policy.pretrained_path=lerobot/pi05_base \
+  --policy.device=cuda \
+  --policy.dtype=bfloat16 \
+  --policy.gradient_checkpointing=true \
+  --policy.compile_model=false \
+  --policy.train_expert_only=true \
+  --policy.push_to_hub=false \
+  --batch_size=32 \
+  --num_workers=8 \
+  --steps=30000 \
+  --log_freq=100 \
+  --save_freq=5000 \
+  --output_dir=/home/lenovo/Evo-RL/outputs/train/$RUN \
+  --job_name=$RUN \
+  --wandb.enable=false
+```
+
 ## 3. 推理总体方案
 
 两台电脑建议按 async gRPC 推理拆分：

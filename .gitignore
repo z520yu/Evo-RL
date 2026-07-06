@@ -165,10 +165,33 @@ wandb/
 
 # Data folders
 data/
+datasets/
 outputs/
 piper_multitask_v1/
 piper_multitask_v1_iter1/
 eval_piper_hil_round1/
+piper_*/
+eval_*/
+*.zip
+.hf_cache/
+
+# Vendored OpenPI workspace: keep source/config/docs, ignore local runtime artifacts.
+openpi-lotus-v2-workspace/.git.openpi-upstream/
+openpi-lotus-v2-workspace/third_party/**/.git
+openpi-lotus-v2-workspace/.venv/
+openpi-lotus-v2-workspace/.uv_cache/
+openpi-lotus-v2-workspace/.uv_python/
+openpi-lotus-v2-workspace/.jax_cache/
+openpi-lotus-v2-workspace/.hf_cache/
+openpi-lotus-v2-workspace/.openpi_cache/
+openpi-lotus-v2-workspace/.local/
+openpi-lotus-v2-workspace/checkpoints/
+openpi-lotus-v2-workspace/checkpoints_smoke/
+openpi-lotus-v2-workspace/rfm_local/
+openpi-lotus-v2-workspace/logs/
+openpi-lotus-v2-workspace/src/openpi/training/*.bak_*
+!openpi-lotus-v2-workspace/.python-version
+!openpi-lotus-v2-workspace/uv.lock
 
 # Local research caches / cloned references
 .codex
@@ -181,6 +204,9 @@ VLA_RL_papers/repos/
 
 # Dev folders
 .cache/*
+remote_tmp/
+tmp_*.sh
+tmp_*.py
 *.stl
 *.urdf
 *.xml

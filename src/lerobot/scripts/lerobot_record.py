@@ -239,6 +239,14 @@ class RecordConfig:
     communication_retry_timeout_s: float = 2.0
     # Sleep interval between communication retries (seconds).
     communication_retry_interval_s: float = 0.1
+    # During reset loops with no policy/teleop source, send a zero action to the robot.
+    reset_to_zero_action: bool = False
+    # Optional gripper target used together with reset_to_zero_action during reset loops.
+    # This keeps the arm joints at zero while leaving the gripper open for the next episode.
+    reset_gripper_pos: float | None = None
+    # Run the same reset loop before the first episode. Useful for policy-only eval so episode 0
+    # starts from the same home/open-gripper pose as later episodes.
+    reset_before_first_episode: bool = False
 
     def __post_init__(self):
         # HACK: We parse again the cli args here to get the pretrained path if there was one.
@@ -451,8 +459,40 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
 
         with VideoEncodingManager(dataset):
             recorded_episodes = 0
+            if cfg.reset_before_first_episode and not events["stop_recording"]:
+                log_say("Reset the environment before first episode", cfg.play_sounds)
+
+                if robot.name == "unitree_g1":
+                    robot.reset()
+
+                record_loop(
+                    robot=robot,
+                    events=events,
+                    fps=cfg.dataset.fps,
+                    teleop_action_processor=teleop_action_processor,
+                    robot_action_processor=robot_action_processor,
+                    robot_observation_processor=robot_observation_processor,
+                    teleop=teleop,
+                    control_time_s=cfg.dataset.reset_time_s,
+                    single_task=cfg.dataset.single_task,
+                    display_data=cfg.display_data,
+                    policy_sync_executor=policy_sync_executor,
+                    intervention_state_machine_enabled=cfg.intervention_state_machine_enabled,
+                    collector_policy_id_policy=collector_policy_id_policy,
+                    collector_policy_id_human=collector_policy_id_human,
+                    acp_inference=cfg.acp_inference,
+                    communication_retry_timeout_s=cfg.communication_retry_timeout_s,
+                    communication_retry_interval_s=cfg.communication_retry_interval_s,
+                    send_zero_action_when_no_source=cfg.reset_to_zero_action,
+                    reset_gripper_pos=cfg.reset_gripper_pos,
+                )
+
             while recorded_episodes < cfg.dataset.num_episodes and not events["stop_recording"]:
                 events["episode_outcome"] = None
+                on_episode_start = getattr(cfg, "_on_record_episode_start", None)
+                if callable(on_episode_start):
+                    on_episode_start(robot, teleop)
+
                 log_say(f"Recording episode {dataset.num_episodes}", cfg.play_sounds)
                 record_loop(
                     robot=robot,
@@ -526,6 +566,8 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
                         acp_inference=cfg.acp_inference,
                         communication_retry_timeout_s=cfg.communication_retry_timeout_s,
                         communication_retry_interval_s=cfg.communication_retry_interval_s,
+                        send_zero_action_when_no_source=cfg.reset_to_zero_action,
+                        reset_gripper_pos=cfg.reset_gripper_pos,
                     )
 
                 if events["rerecord_episode"]:
